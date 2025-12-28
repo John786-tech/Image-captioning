@@ -1,0 +1,52 @@
+import warnings
+warnings.filterwarnings("ignore")
+
+from transformers import logging
+logging.set_verbosity_error()
+import requests
+from PIL import Image
+from io import BytesIO
+from transformers import BlipProcessor, BlipForConditionalGeneration
+
+def load_model():
+    """Load BLIP image captioning model"""
+    processor = BlipProcessor.from_pretrained(
+        "Salesforce/blip-image-captioning-base"
+    )
+    model = BlipForConditionalGeneration.from_pretrained(
+        "Salesforce/blip-image-captioning-base"
+    )
+    return processor, model
+
+def load_image_from_url(url):
+    """Download and validate image from URL"""
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
+    content_type = response.headers.get("Content-Type", "")
+    if "image" not in content_type:
+        raise ValueError("URL does not point to an image")
+    image = Image.open(BytesIO(response.content)).convert("RGB")
+    return image
+
+def generate_caption(image, processor, model):
+    """Generate caption for image"""
+    inputs = processor(image, return_tensors="pt")
+    output = model.generate(**inputs)
+    caption = processor.decode(output[0], skip_special_tokens=True)
+    return caption
+
+def main():
+    print(" IMAGE CAPTIONING SYSTEM")
+    print("-" * 30)
+    image_url = input("Enter image URL: ").strip()
+    try:
+        processor, model = load_model()
+        image = load_image_from_url(image_url)
+        caption = generate_caption(image, processor, model)
+        print("\n Image Caption:")
+        print(caption)
+    except Exception as e:
+        print("\n Invalid image URL or not an image")
+        print("Reason:", e)
+if __name__ == "__main__":
+    main()
